@@ -5,7 +5,7 @@
             <div class="nav">
                 <ul class="second-nav" ref="menu">
                     <router-link tag="li" to="/movie/city">
-                        <span>大连</span>
+                        <span>{{ $store.state.city.nm }}</span>
                         <span class="normal"><img src="../../assets/iconfont/m-downarrow.png" alt="下箭头"></span>
                         <span class="active"><img src="../../assets/iconfont/m-downarrow-selected.png" alt="下箭头"></span>
                     </router-link>
@@ -25,6 +25,7 @@
 <script>
     import Navbar from '../../components/Navbar'
     import Tabbar from '../../components/Tabbar'
+    import { location } from '../../components/JS' 
     export default {
         name: 'movie',
         data(){
@@ -34,8 +35,34 @@
         },
         components:{
             navbar: Navbar,
-            tabbar: Tabbar
+            tabbar: Tabbar,
         },
+        mounted(){
+            setTimeout(() => {
+                this.$http.get('/api/getLocation')
+                .then(resp => {
+                    const msg = resp.data.msg
+                    if(msg === 'ok'){
+                        var nm = resp.data.data.nm
+                        var id = resp.data.data.id
+                        // 如果定位是当前所在城市，则不必在显示定位弹窗
+                        if(this.$store.state.city.id == id) { return }
+                        // 显示地图定位的弹窗
+                        location({
+                            title: '定位',
+                            content: nm,
+                            cancle: '取消',
+                            ok: '切换城市',
+                            handleOk(){
+                                window.localStorage.setItem('cityNm',nm)
+                                window.localStorage.setItem('cityId',id)
+                                window.location.reload()
+                            }
+                        })
+                    }
+                })
+            },2000)
+        }
     }
 </script>
 

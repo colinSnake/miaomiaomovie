@@ -1,20 +1,25 @@
 <template>
     <div class="city">
         <div class="city_list">
-            <div class="city_hot">
-                <h2>热门城市</h2>
-                <ul>
-                    <li v-for="item in hotCities" :key="item.id">{{item.nm}}</li>
-                </ul>
-            </div>
-            <div class="city_sort" ref="city_sort">
-                <div class="city_model" v-for="item in cityLists" :key="item.index">
-                    <h2>{{item.index}}</h2>
-                    <ul>
-                        <li v-for="child in item.list" :key="child.id">{{child.nm}}</li>
-                    </ul>
+            <loading v-if="isLoading" />
+            <scroller v-else ref="city_list">
+                <div>
+                    <div class="city_hot">
+                        <h2>热门城市</h2>
+                        <ul>
+                            <li v-for="item in hotCities" :key="item.id" @tap="handleToChangeCity(item.nm,item.id)">{{item.nm}}</li>
+                        </ul>
+                    </div>
+                    <div class="city_sort" ref="city_sort">
+                        <div class="city_model" v-for="item in cityLists" :key="item.index">
+                            <h2>{{item.index}}</h2>
+                            <ul>
+                                <li v-for="child in item.list" :key="child.id" @tap="handleToChangeCity(child.nm,child.id)">{{child.nm}}</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </scroller>
         </div>
         <div class="city_index">
             <ul>
@@ -30,11 +35,20 @@
         data(){
             return{
                 cityLists: [],
-                hotCities: []  
+                hotCities: [],
+                isLoading: true  
             }
         },
         mounted(){
-            this.$http.get('/api/cityList')
+            // 通过第一次获取的城市数据存储到本地，不用每次去发送ajax请求，节省资源
+            var cityLists = window.localStorage.getItem('cityLists')
+            var hotCities = window.localStorage.getItem('hotCities')
+            if(cityLists && hotCities){
+                this.cityLists = JSON.parse(cityLists)
+                this.hotCities = JSON.parse(hotCities)
+                this.isLoading = false
+            }else{
+                this.$http.get('/api/cityList')
                 .then(resp => {
                     const msg = resp.data.msg;
                     if(msg === 'ok'){
@@ -43,12 +57,15 @@
                         let {cityLists,hotCities} = this.formatCityList(cities)
                         this.cityLists = cityLists
                         this.hotCities = hotCities
-                        
+                        window.localStorage.setItem('cityLists',JSON.stringify(cityLists))
+                        window.localStorage.setItem('hotCities',JSON.stringify(hotCities))
+                        this.isLoading = false
                     }
                 })
                 .catch(error => {
                     console.log(error)
                 })
+            }
         },
         methods:{
             // 格式化cityList
@@ -105,7 +122,17 @@
             // 点击索引跳转到对应位置
             handleToIndex(index){
                 var h2 = this.$refs.city_sort.getElementsByTagName('h2')
-                this.$refs.city_sort.parentNode.scrollTop = h2[index].offsetTop - 105
+                // 使用了全局注册的scroller组件，导致写的原生的索引定位失效了
+                // this.$refs.city_sort.parentNode.scrollTop = h2[index].offsetTop - 105
+                this.$refs.city_list.handleToScrollTop(-h2[index].offsetTop - 5)
+            },
+            // 切换城市
+            handleToChangeCity(nm,id){
+                // 切换城市
+                this.$store.commit('city/CITY_INFO',{ nm, id })
+                window.localStorage.setItem('cityNm',nm)
+                window.localStorage.setItem('cityId',id)
+                this.$router.push({path: '/movie/hotplaying'})
             }
         },
     }
@@ -133,7 +160,7 @@
                     width: 86vw;
                     display: flex;
                     flex-wrap: wrap;
-                    padding: 5vw 4vw;
+                    padding: 5vw 4vw 2vw 4vw;
                     li{
                         width: 20vw;
                         height: 4vw;
